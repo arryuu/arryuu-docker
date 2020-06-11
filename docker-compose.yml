@@ -1,0 +1,102 @@
+version: "3"
+#Master-slave
+services:
+    mydb:
+        container_name: "mydb"
+        restart: always
+        ports: 
+            - "13306:3306"
+        volumes:
+            - ./Dockerfile/mysql/db/conf.d:/etc/mysql/conf.d
+            - ./storage/mysql/db/data:/var/lib/mysql
+            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
+        environment: #自定环境变量
+            MYSQL_ROOT_PASSWORD: 123456
+        privileged: true
+        image: mysql:5.7.28
+    mydb1m1:
+        container_name: "mydb1m1"
+        restart: always
+        ports: 
+            - "13316:3306"
+        volumes:
+            - ./Dockerfile/mysql/1m1/conf.d:/etc/mysql/conf.d
+            - ./storage/mysql/1m1/data:/var/lib/mysql
+            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
+        environment: #自定环境变量
+            MYSQL_ROOT_PASSWORD: 123456
+        privileged: true
+        image: mysql:5.7.28
+    mydb1s1:
+        container_name: "mydb1s1"
+        restart: always
+        ports: 
+            - "13317:3306"
+        volumes:
+            - ./Dockerfile/mysql/1s1/conf.d:/etc/mysql/conf.d
+            - ./storage/mysql/1s1/data:/var/lib/mysql
+            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
+        environment: #自定环境变量
+            MYSQL_ROOT_PASSWORD: 123456
+        privileged: true
+        image: mysql:5.7.28
+    myredis:
+        container_name: "myredis"
+        restart: always
+        ports:
+            - "16379:6379"
+        volumes:
+            - ./storage/redis:/data
+            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
+        command: redis-server -- appendonlyyes
+        privileged: true
+        image: redis:3.2
+    myphp:
+        container_name: "myphp"
+        restart: always
+        ports:
+            - "9000:9000"
+        volumes:
+            - ./www:/var/www/html
+            - ./Dockerfile/php:/usr/local/etc/php
+            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
+        links: 
+            - "mydb"
+            - "myredis"
+        #image: php:7.2-fpm
+        privileged: true
+        build: ./Dockerfile/php
+    mynginx:
+        container_name: "mynginx"
+        restart: always
+        ports:
+            - "80:80"
+            - "85:85"
+            - "86:86"
+        links: 
+            - "myphp"
+            - "myubuntu"
+        volumes: 
+            - ./www:/usr/share/nginx/html
+            - ./Dockerfile/nginx:/etc/nginx/conf.d
+            - ./log/nginx:/var/log/nginx
+            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
+        privileged: true
+        image: nginx:latest
+    myubuntu:
+        container_name: "myubuntu"
+        restart: always
+        ports:
+            #- "3788:3788"
+            - "6666:6666"
+            - "7777:7777"
+            - "8888:8888"
+        volumes:
+            - ./www:/arryuu/www
+        privileged: true
+        build: ./Dockerfile/ubuntu
+        #exited with code 0加上以下两个参数stdin_open、tty
+        #stdin_open: true对于docker run -i;tty: true对于docker run -t
+        #如果你不想停留在bash命令页面，这样执行命令即可 docker-compose up -d
+        stdin_open: true
+        tty: true

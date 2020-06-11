@@ -1,1 +1,1 @@
-# arryuu-docker
+# arryuu-docker> 一个在自己日常开发而积累出来的配置环境  > 没有github上同类别的优秀  > 没有华丽的写法  > 没有相辅相成的shell脚本  > 只能凑合着使用^_^### 目录架构```|-- arryuu-docker    |-- Dockerfile/          相关的dockerfile和配置文件    |-- log/                 相关的日志文件例如nginx    |-- storage/             数据持久化例如mysql、redis    |-- www/                 项目目录    |-- .gitignore    |-- docker-compose.yml   docker-composer执行文件    |-- README.md```### 目前有的东西- [x] 有三个5.7.28的mysql数据库，为什么有三个呢原本想弄一个mycat+proxy高可用性的负载...- [x] php:7.2.25-fpm(带swoole扩展)- [x] nginx:latest- [x] ubuntu:18.04(这里面有一个go环境)
