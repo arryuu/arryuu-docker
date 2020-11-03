@@ -68,7 +68,7 @@ services:
         volumes:
             - ./storage/redis:/data
             #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
-        command: redis-server -- appendonlyyes
+        command: redis-server -- appendonly yes
         privileged: true
         image: redis:3.2
     myphp:
