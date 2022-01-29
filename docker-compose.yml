@@ -1,122 +1,1 @@
-version: "3"
-#Master-slave
-services:
-    mydb8:
-        container_name: "mydb8"
-        restart: always
-        ports:
-            - "13386:3306"
-        volumes:
-            - ./Dockerfile/mysql/mysql8/conf.d:/etc/mysql/conf.d
-            - ./storage/mysql/mysql8/data:/var/lib/mysql
-            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
-        environment: #自定环境变量
-            MYSQL_ROOT_PASSWORD: 123456
-            TZ: "Asia/Shanghai"
-        command:
-            --max_allowed_packet=128M
-            --default-authentication-plugin=mysql_native_password
-            --character-set-server=utf8mb4
-            --collation-server=utf8mb4_general_ci
-            --explicit_defaults_for_timestamp=true
-        privileged: true
-        image: mysql:8.0
-    mydb:
-        container_name: "mydb"
-        restart: always
-        ports:
-            - "13306:3306"
-        volumes:
-            - ./Dockerfile/mysql/db/conf.d:/etc/mysql/conf.d
-            - ./storage/mysql/db/data:/var/lib/mysql
-            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
-        environment: #自定环境变量
-            MYSQL_ROOT_PASSWORD: 123456
-        privileged: true
-        image: mysql:5.7.28
-    mydb1m1:
-        container_name: "mydb1m1"
-        restart: always
-        ports:
-            - "13316:3306"
-        volumes:
-            - ./Dockerfile/mysql/1m1/conf.d:/etc/mysql/conf.d
-            - ./storage/mysql/1m1/data:/var/lib/mysql
-            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
-        environment: #自定环境变量
-            MYSQL_ROOT_PASSWORD: 123456
-        privileged: true
-        image: mysql:5.7.28
-    mydb1s1:
-        container_name: "mydb1s1"
-        restart: always
-        ports:
-            - "13317:3306"
-        volumes:
-            - ./Dockerfile/mysql/1s1/conf.d:/etc/mysql/conf.d
-            - ./storage/mysql/1s1/data:/var/lib/mysql
-            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
-        environment: #自定环境变量
-            MYSQL_ROOT_PASSWORD: 123456
-        privileged: true
-        image: mysql:5.7.28
-    myredis:
-        container_name: "myredis"
-        restart: always
-        ports:
-            - "16379:6379"
-        volumes:
-            - ./storage/redis:/data
-            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
-        command: redis-server -- appendonly yes
-        privileged: true
-        image: redis:3.2
-    myphp:
-        container_name: "myphp"
-        restart: always
-        ports:
-            - "9000:9000"
-        volumes:
-            - ./www:/var/www/html
-            - ./Dockerfile/php:/usr/local/etc/php
-            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
-        links:
-            - "mydb"
-            - "myredis"
-        #image: php:7.2-fpm
-        privileged: true
-        build: ./Dockerfile/php
-    mynginx:
-        container_name: "mynginx"
-        restart: always
-        ports:
-            - "80:80"
-            - "85:85"
-            - "86:86"
-        links:
-            - "myphp"
-            - "myubuntu"
-        volumes:
-            - ./www:/usr/share/nginx/html
-            - ./Dockerfile/nginx:/etc/nginx/conf.d
-            - ./log/nginx:/var/log/nginx
-            #- /etc/localtime:/etc/localtime:ro   #设置容器时期和宿主机同步
-        privileged: true
-        image: nginx:latest
-    myubuntu:
-        container_name: "myubuntu"
-        restart: always
-        ports:
-            #- "3788:3788"
-            - "6666:6666"
-            - "7777:7777"
-            - "8888:8888"
-        volumes:
-            - ./www:/arryuu/www
-        privileged: true
-        build: ./Dockerfile/ubuntu
-        #exited with code 0加上以下两个参数stdin_open、tty
-        #stdin_open: true对于docker run -i;tty: true对于docker run -t
-        #如果你不想停留在bash命令页面，这样执行命令即可 docker-compose up -d
-        stdin_open: true
-        tty: true
+version: "3"networks:  defNetworks:    driver: bridge    ipam:      config:        - subnet: 172.0.0.0/24services:  ubuntu:    build:      context: ./services/ubuntu/      args:        UBUNTU_IMAGES: ${UBUNTU_IMAGES}    container_name: ubuntu    network_mode: host    command: tail -F /dev/null    volumes:      - ${SOURCE_DIR}:/var/www/html/:rw  node:    build:      context: ./services/node/      args:        NODE_IMAGES: ${NODE_IMAGES}    container_name: node    environment:      TZ: "$TZ"    volumes:      - ${SOURCE_DIR}:/var/www/html/:rw    networks:      - defNetworks    stdin_open: true    tty: true  go:    build:      context: ./services/golang/      args:        GO_IMAGES: ${GO_IMAGES}    container_name: go    volumes:      - ${SOURCE_DIR}:/var/www/html/:rw    environment:      TZ: "$TZ"    networks:      - defNetworks    stdin_open: true    tty: true  leaf-zookeeper:    build:      context: ./services/leaf-zookeeper/      args:        ZOOKEEPER_IMAGES: ${ZOOKEEPER_IMAGES}    container_name: leaf-zookeeper    restart: always    ports:      - "2181:2181"    volumes:      - ${SOURCE_DIR}:/var/www/html/:rw      - ${DATA_DIR}/leaf-zookeeper:/data/:rw      - ${LEAF_ZOOKEEPER_LOG_DIR}:/datalog/:rw    environment:      TZ: "$TZ"    networks:      defNetworks:        ipv4_address: 172.0.0.50  leaf-server:    build:      context: ./services/leaf-server/      args:        LEAF_SERVER_IMAGES: ${LEAF_SERVER_IMAGES}    container_name: leaf-server    ports:      - "8080:8080"    volumes:      - ${SOURCE_DIR}:/var/www/html/:rw    environment:      TZ: "$TZ"    networks:      - defNetworks    stdin_open: true    tty: true  nginx:    build:      context: ./services/nginx/      args:        NGINX_IMAGES: ${NGINX_IMAGES}    container_name: nginx    ports:      - "${NGINX_HTTP_HOST_PORT}:80"      - "${NGINX_HTTPS_HOST_PORT}:443"    volumes:      - ${SOURCE_DIR}:/var/www/html/:rw      - ${NGINX_LOG_DIR}:/var/log/nginx/:rw      - ${NGINX_CONFD_DIR}:/etc/nginx/conf.d/:rw      - ${LUA_DIR}:/usr/local/openresty/nginx/conf/lua:rw      - ${NGINX_CONF_FILE}:/etc/nginx/nginx.conf:ro      - ${NGINX_CONF_FILE}:/usr/local/openresty/nginx/conf/nginx.conf:ro    restart: always    depends_on:      - php    environment:      MYSQL_ROOT_PASSWORD: "${MYSQL57_ROOT_PASSWORD}"      REDIS_PASSWORD: "${REDIS_PASSWORD}"      TZ: "$TZ"    networks:      defNetworks:        ipv4_address: 172.0.0.10  php:    build:      context: ./services/php74/      args:        PHP_IMAGES: ${PHP74_IMAGES}        ALPINE_REPOSITORIES: ${ALPINE_REPOSITORIES}        PHP_EXTENSIONS: ${PHP74_EXTENSIONS}        COMPOSER_VERSION: ${COMPOSER_VERSION}        COMPOSER_PACKAGIST: ${COMPOSER_PACKAGIST}        MORE_EXTENSION_INSTALLER: php.sh    container_name: php    ports:      - "8000:8000"    volumes:      - ${SOURCE_DIR}:/var/www/html/:rw      - ${PHP74_PHP_CONF_FILE}:/usr/local/etc/php/php.ini:ro      - ${PHP74_FPM_CONF_FILE}:/usr/local/etc/php-fpm.d/www.conf:rw      - ${PHP74_LOG_DIR}:/var/log/php      - ${COMPOSER_DATA_DIR}:/composer:rw      - ${NGINX_CONFD_DIR}:/etc/nginx/conf.d/:rw    restart: always    environment:      MYSQL_ROOT_PASSWORD: "${MYSQL57_ROOT_PASSWORD}"      REDIS_PASSWORD: "${REDIS_PASSWORD}"      TZ: "$TZ"    cap_add:      - SYS_PTRACE    networks:      defNetworks:        ipv4_address: 172.0.0.30    extra_hosts:      - "nginx.docker:172.0.0.10"    security_opt:      - "seccomp=./services/php74/seccomp.json"  mysql:    build:      context: ./services/mysql57/      args:        MYSQL57_IMAGES: ${MYSQL57_IMAGES}    container_name: mysql    ports:      - "${MYSQL57_HOST_PORT}:3306"    volumes:      - ${MYSQL57_CONF_FILE}:/etc/mysql/conf.d/mysql.cnf:ro      - ${DATA_DIR}/mysql57:/var/lib/mysql/:rw    restart: always    networks:      defNetworks:        ipv4_address: 172.0.0.20    environment:      MYSQL_ROOT_PASSWORD: "${MYSQL57_ROOT_PASSWORD}"      TZ: "$TZ"  redis:    build:      context: ./services/redis/      args:        REDIS_IMAGES: ${REDIS_IMAGES}    container_name: redis    ports:      - "${REDIS_HOST_PORT}:6379"    volumes:      - ${REDIS_CONF_FILE}:/etc/redis.conf:ro      - ${DATA_DIR}/redis:/data/:rw    restart: always    environment:      TZ: "$TZ"    entrypoint:      ["redis-server", "/etc/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]    networks:      defNetworks:        ipv4_address: 172.0.0.40  mongodb:    build:      context: ./services/mongodb/      args:        MONGODB_IMAGES: ${MONGODB_IMAGES}    container_name: mongodb    environment:      MONGO_INITDB_ROOT_USERNAME: "${MONGODB_INITDB_ROOT_USERNAME}"      MONGO_INITDB_ROOT_PASSWORD: "${MONGODB_INITDB_ROOT_PASSWORD}"      TZ: "$TZ"    volumes:      - ${DATA_DIR}/mongo:/data/db:rw      - ${DATA_DIR}/mongo_key:/mongo:rw    ports:      - "${MONGODB_HOST_PORT}:27017"    networks:      defNetworks:        ipv4_address: 172.0.0.60    command: --auth  rabbitmq:    build:      context: ./services/rabbitmq      args:        RABBITMQ_VERSION: ${RABBITMQ_VERSION}        RABBITMQ_PLUGINS: ${RABBITMQ_PLUGINS}    container_name: rabbitmq    restart: always    ports:      - "${RABBITMQ_HOST_PORT_C}:5672"      - "${RABBITMQ_HOST_PORT_S}:15672"    environment:       TZ: "$TZ"       RABBITMQ_DEFAULT_USER: "${RABBITMQ_DEFAULT_USER}"       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_DEFAULT_PASS}"    networks:      defNetworks:        ipv4_address: 172.0.0.80  elasticsearch:    build:      context: ./services/elasticsearch      args:        ELASTICSEARCH_VERSION: ${ELASTICSEARCH_VERSION}        ELASTICSEARCH_PLUGINS: ${ELASTICSEARCH_PLUGINS}    container_name: elasticsearch    environment:      - TZ=$TZ      - discovery.type=single-node      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"    volumes:      - ${DATA_DIR}/elasticsearch:/usr/share/elasticsearch/data      - ${ELASTICSEARCH_CONF_FILE}:/usr/share/elasticsearch/config/elasticsearch.yml    restart: always    ports:      - "${ELASTICSEARCH_HOST_PORT_C}:9200"      - "${ELASTICSEARCH_HOST_PORT_S}:9300"    networks:      defNetworks:        ipv4_address: 172.0.0.70  kibana:    image: kibana:${KIBANA_VERSION}    container_name: kibana    environment:      TZ: "$TZ"      elasticsearch.hosts: //172.0.0.70:9200      I18N_LOCALE: "${KIBANA_I18N_LOCALE}"    networks:      - defNetworks    restart: always    ports:      - "${KIBANA_HOST}:5601"
